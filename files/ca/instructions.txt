@@ -1,0 +1,18 @@
+# Adapted from https://jamielinux.com/docs/openssl-certificate-authority/index.html
+mkdir certs crl newcerts private csr
+touch index.txt
+echo 1000 > serial
+wget https://jamielinux.com/docs/openssl-certificate-authority/_downloads/root-config.txt -O openssl.cnf
+# Relax CA restrictions for test
+sed -i 's/policy\s*= policy_strict/policy            = policy_loose/' openssl.cnf
+# Fix CA directory - place your proper directory here
+sed -i 's/^dir\s*= \/root\/ca/dir               = \/home\/troyready\/cookbooks\/samplewinsystem\/files\/ca/' openssl.cnf
+openssl genrsa -aes256 -out private/ca.key.pem 4096
+# Enter pass phrase for ca.key.pem: secretpassword
+openssl req -config openssl.cnf -key private/ca.key.pem -new -x509 -days 7300 -sha256 -extensions v3_ca -out certs/ca.cert.pem
+# CN of myorg.com provided
+openssl genrsa -out private/star.mysubdomain.myorg.com.key.pem 2048
+openssl req -config openssl.cnf -extensions server_cert -key private/star.mysubdomain.myorg.com.key.pem -new -sha256 -out csr/star.mysubdomain.myorg.com.csr.pem
+# CN of *.mysubdomain.myorg.com provided
+openssl ca -config openssl.cnf -extensions server_cert -days 7200 -notext -md sha256 -in csr/star.mysubdomain.myorg.com.csr.pem -out certs/star.mysubdomain.myorg.com.cert.pem
+# Now copy the certs/keys into test/integration/data_bags/vault/star_mysubdomain_myorg_com_keypair.json
